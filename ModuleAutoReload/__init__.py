@@ -1,4 +1,4 @@
-#only been tested in Python 3.9!
+#only been tested in Python 3.9, in windows 10!
 #needed packages: watchdog
 #pip install watchdog
 
@@ -15,17 +15,20 @@ import time
 #    subprocess.check_call([sys.executable, "-m", "pip", "install", "watchdog"])
 
 class ModifiedEventHandler(FileSystemEventHandler):
-    def __init__(self, module, logging):
+    def __init__(self, module, callback, logging):
         self.module = module
         self.logging = logging
         self.prev_time = 0
         self.isdir = module.__file__.endswith("__init__.py")
+        self.callback = callback
 
     def Reload(self):
         if(time.time() - self.prev_time > 0.5):
             self.prev_time = time.time()
             try:
                 reload(self.module)
+                if self.callback:
+                    self.callback()
                 if(self.logging):
                     print("Successfully loaded module:", self.module.__spec__.name)
             except Exception as err:
@@ -41,9 +44,9 @@ class ModifiedEventHandler(FileSystemEventHandler):
                 self.Reload()
 
 class ModuleAutoReload():
-    def __init__(self, module, logging=False):
+    def __init__(self, module, callback=None, logging=False):
         path = os.path.dirname(module.__file__)
-        event_handler = ModifiedEventHandler(module, logging)
+        event_handler = ModifiedEventHandler(module, callback, logging)
         observer = Observer()
         observer.schedule(event_handler, path, recursive=True)
         observer.start()
